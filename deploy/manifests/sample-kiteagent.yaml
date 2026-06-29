@@ -1,0 +1,19 @@
+apiVersion: kite.io/v1alpha1
+kind: KiteAgent
+metadata:
+  name: sample
+  namespace: kite-system
+spec:
+  llmProvider: anthropic
+  llmSecret: kite-llm-secret   # Secret must have key: ANTHROPIC_API_KEY
+  pollInterval: 60s
+  namespaces:
+    - default
+    - kite-system
+  allowedActions:
+    - name: get_pods
+      description: List pods and their status in a namespace
+    - name: get_logs
+      description: Retrieve recent pod logs (capped at 200 lines)
+    - name: describe_node
+      description: Show node conditions, capacity, and allocatable resources

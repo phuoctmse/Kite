@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kite-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kite-agent
+  namespace: kite-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kite-agent-role
+rules:
+  # Core read-only (built-in actions)
+  - apiGroups: [""]
+    resources: [pods, nodes, events, configmaps, namespaces]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get]
+  # Workload read-only
+  - apiGroups: [apps]
+    resources: [deployments, replicasets, daemonsets, statefulsets]
+    verbs: [get, list, watch]
+  # KiteAgent CR management
+  - apiGroups: [kite.io]
+    resources: [kiteagents]
+    verbs: [get, list, watch, update, patch]
+  - apiGroups: [kite.io]
+    resources: [kiteagents/status]
+    verbs: [update, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kite-agent-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kite-agent-role
+subjects:
+  - kind: ServiceAccount
+    name: kite-agent
+    namespace: kite-system

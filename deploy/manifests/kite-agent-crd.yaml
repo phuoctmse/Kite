@@ -1,0 +1,70 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: kiteagents.kite.io
+spec:
+  group: kite.io
+  names:
+    kind: KiteAgent
+    listKind: KiteAgentList
+    plural: kiteagents
+    singular: kiteagent
+    shortNames:
+      - ka
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - llmProvider
+              properties:
+                llmProvider:
+                  type: string
+                  enum: [anthropic, openai, ollama]
+                llmEndpoint:
+                  type: string
+                llmSecret:
+                  type: string
+                pollInterval:
+                  type: string
+                  default: "60s"
+                allowedActions:
+                  type: array
+                  items:
+                    type: object
+                    required: [name, description]
+                    properties:
+                      name:
+                        type: string
+                      description:
+                        type: string
+                namespaces:
+                  type: array
+                  items:
+                    type: string
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                message:
+                  type: string
+      additionalPrinterColumns:
+        - name: Provider
+          type: string
+          jsonPath: .spec.llmProvider
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
