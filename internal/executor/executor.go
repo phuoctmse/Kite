@@ -6,6 +6,7 @@ import (
 
 	"github.com/kite-io/kite/api/v1alpha1"
 	"github.com/kite-io/kite/internal/brain"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -16,12 +17,16 @@ type Result struct {
 }
 
 type Runner struct {
-	registry *Registry
+	registry       *Registry
+	typedClientset kubernetes.Interface
 }
 
-func NewRunner(c client.Client) *Runner {
-	r := &Runner{registry: newRegistry()}
-	registerBuiltins(r.registry, c)
+func NewRunner(c client.Client, typedClientset kubernetes.Interface) *Runner {
+	r := &Runner{
+		registry:       newRegistry(),
+		typedClientset: typedClientset,
+	}
+	registerBuiltins(r.registry, c, typedClientset)
 	return r
 }
 
