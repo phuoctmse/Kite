@@ -16,6 +16,8 @@ func registerBuiltins(r *Registry, c client.Client, typedClientset kubernetes.In
 	r.Register(&getPods{client: c})
 	r.Register(&getLogs{client: c, typedClientset: typedClientset})
 	r.Register(&describeNode{client: c})
+	// Phase 2: write actions — effective only when listed in allowedActions
+	registerMutations(r, c)
 }
 
 type getPods struct{ client client.Client }

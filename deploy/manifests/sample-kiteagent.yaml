@@ -1,7 +1,10 @@
+---
+# Phase 1 — Passive Mode (read-only)
+# The agent observes and reasons but never mutates the cluster.
 apiVersion: kite.io/v1alpha1
 kind: KiteAgent
 metadata:
-  name: sample
+  name: kite-passive
   namespace: kite-system
 spec:
   llmProvider: anthropic
@@ -17,3 +20,50 @@ spec:
       description: Retrieve recent pod logs (capped at 200 lines)
     - name: describe_node
       description: Show node conditions, capacity, and allocatable resources
+
+---
+# Phase 2 — Auto Mode (self-healing)
+# The agent can observe AND remediate. Enable only when you trust the LLM.
+# All write actions support dry_run: true for safe testing.
+apiVersion: kite.io/v1alpha1
+kind: KiteAgent
+metadata:
+  name: kite-auto
+  namespace: kite-system
+spec:
+  llmProvider: anthropic
+  llmSecret: kite-llm-secret
+  pollInterval: 60s
+  namespaces:
+    - default
+    - kite-system
+  allowedActions:
+    # ── Read-only (Phase 1) ─────────────────────────────────────────────────
+    - name: get_pods
+      description: List pods and their status in a namespace
+    - name: get_logs
+      description: Retrieve recent pod logs (capped at 200 lines)
+    - name: describe_node
+      description: Show node conditions, capacity, and allocatable resources
+
+    # ── Write actions (Phase 2) ─────────────────────────────────────────────
+    - name: scale_deployment
+      description: >
+        Scale a Deployment to a target replica count.
+        Safe range: 0–50. Supports dry_run.
+    - name: restart_pod
+      description: >
+        Delete a pod so its owner controller (Deployment/ReplicaSet) recreates it.
+        Refuses standalone pods. Supports dry_run.
+    - name: cordon_node
+      description: >
+        Mark a node as unschedulable to prevent new pods being placed on it.
+        Use when a node is degraded. Supports dry_run.
+    - name: uncordon_node
+      description: >
+        Re-enable scheduling on a previously cordoned node.
+        Supports dry_run.
+    - name: delete_pod
+      description: >
+        Force-delete a pod with a configurable grace period.
+        Use for stuck Terminating pods. Supports dry_run.

@@ -164,14 +164,89 @@ var builtinToolDefs = []brain.ToolDef{
 	{Name: "propose_action", Description: "Propose an action for the executor. Call this last after reasoning"},
 }
 
+// phase2ToolDefs describes write actions; only surfaced to the brain when they
+// appear in the KiteAgent's allowedActions list.
+var phase2ToolDefs = map[string]brain.ToolDef{
+	"scale_deployment": {
+		Name:        "scale_deployment",
+		Description: "Scale a Deployment to a target replica count. Params: name, namespace, replicas (int), dry_run (bool)",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name":      map[string]any{"type": "string", "description": "Deployment name"},
+				"namespace": map[string]any{"type": "string", "description": "Kubernetes namespace"},
+				"replicas":  map[string]any{"type": "number", "description": "Target replica count (0–50)"},
+				"dry_run":   map[string]any{"type": "boolean", "description": "If true, only simulate the change"},
+			},
+			"required": []string{"name", "replicas"},
+		},
+	},
+	"restart_pod": {
+		Name:        "restart_pod",
+		Description: "Delete a pod so its controller recreates it. Only works for pods with an owner (Deployment, ReplicaSet, etc.). Params: name, namespace, dry_run (bool)",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name":      map[string]any{"type": "string", "description": "Pod name"},
+				"namespace": map[string]any{"type": "string", "description": "Kubernetes namespace"},
+				"dry_run":   map[string]any{"type": "boolean", "description": "If true, only simulate the delete"},
+			},
+			"required": []string{"name"},
+		},
+	},
+	"cordon_node": {
+		Name:        "cordon_node",
+		Description: "Mark a node as unschedulable so no new pods are placed on it. Params: name, dry_run (bool)",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name":    map[string]any{"type": "string", "description": "Node name"},
+				"dry_run": map[string]any{"type": "boolean", "description": "If true, only simulate the cordon"},
+			},
+			"required": []string{"name"},
+		},
+	},
+	"uncordon_node": {
+		Name:        "uncordon_node",
+		Description: "Re-enable scheduling on a previously cordoned node. Params: name, dry_run (bool)",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name":    map[string]any{"type": "string", "description": "Node name"},
+				"dry_run": map[string]any{"type": "boolean", "description": "If true, only simulate the uncordon"},
+			},
+			"required": []string{"name"},
+		},
+	},
+	"delete_pod": {
+		Name:        "delete_pod",
+		Description: "Force-delete a pod, optionally with a custom grace period. Use for stuck Terminating pods. Params: name, namespace, grace_period_seconds (int), dry_run (bool)",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name":                 map[string]any{"type": "string", "description": "Pod name"},
+				"namespace":            map[string]any{"type": "string", "description": "Kubernetes namespace"},
+				"grace_period_seconds": map[string]any{"type": "number", "description": "Grace period before SIGKILL (default 30)"},
+				"dry_run":              map[string]any{"type": "boolean", "description": "If true, only simulate the delete"},
+			},
+			"required": []string{"name"},
+		},
+	},
+}
+
 func (a *Agent) buildToolDefs() []brain.ToolDef {
 	defs := make([]brain.ToolDef, 0, len(builtinToolDefs)+len(a.config.AllowedActions))
 	defs = append(defs, builtinToolDefs...)
 	for _, ac := range a.config.AllowedActions {
-		defs = append(defs, brain.ToolDef{
-			Name:        ac.Name,
-			Description: ac.Description,
-		})
+		// Use the rich Phase 2 schema if available; fall back to the spec description.
+		if p2, ok := phase2ToolDefs[ac.Name]; ok {
+			defs = append(defs, p2)
+		} else {
+			defs = append(defs, brain.ToolDef{
+				Name:        ac.Name,
+				Description: ac.Description,
+			})
+		}
 	}
 	return defs
 }
