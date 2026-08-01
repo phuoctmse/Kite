@@ -147,22 +147,13 @@ The agent's behaviour is controlled entirely by what you put in `allowedActions`
 
 ## Actions
 
-Kite separates the tools the LLM can reason with from the actions the executor can run. Four tools are always available to the brain regardless of `allowedActions`:
-
-| Tool | Purpose |
-|---|---|
-| `get_cluster_snapshot` | Returns the compressed cluster health snapshot. The LLM should call this first. |
-| `get_pod_logs` | Fetches the last N log lines from a pod. Params: `name`, `namespace`, `tail` (int). |
-| `get_pod_events` | Returns recent Kubernetes events for a specific pod. Params: `name`, `namespace`. |
-| `propose_action` | Signals the executor to run an action. The LLM calls this last, after reasoning. |
-
-Three executor actions are registered by default and can be enabled by adding them to `allowedActions`:
+Three read-only tools are always advertised to the brain regardless of `allowedActions`, but — like every action — the executor still blocks the call unless its name is also listed in `allowedActions`:
 
 | Action name | What it does |
 |---|---|
 | `get_pods` | Lists pods and their status in a namespace. |
-| `get_logs` | Retrieves pod logs, capped at 200 lines. |
-| `describe_node` | Returns node conditions, capacity, and allocatable resources. |
+| `get_logs` | Retrieves pod logs, capped at 200 lines. Params: `name`, `namespace`, `container`, `tail` (int). |
+| `describe_node` | Returns node conditions, capacity, and allocatable resources. Params: `name`. |
 
 To add your own action, implement the `executor.Action` interface and call `runner.Register()`:
 

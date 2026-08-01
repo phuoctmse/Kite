@@ -3,12 +3,17 @@ package executor
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/kite-io/kite/api/v1alpha1"
 	"github.com/kite-io/kite/internal/brain"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// defaultMutationCooldown is the minimum interval between two mutating
+// actions on the same (action, namespace, resource) tuple.
+const defaultMutationCooldown = 5 * time.Minute
 
 type Result struct {
 	ActionName string
@@ -19,12 +24,14 @@ type Result struct {
 type Runner struct {
 	registry       *Registry
 	typedClientset kubernetes.Interface
+	cooldown       *MutationCooldown
 }
 
 func NewRunner(c client.Client, typedClientset kubernetes.Interface) *Runner {
 	r := &Runner{
 		registry:       newRegistry(),
 		typedClientset: typedClientset,
+		cooldown:       NewMutationCooldown(),
 	}
 	registerBuiltins(r.registry, c, typedClientset)
 	return r
@@ -51,6 +58,19 @@ func (r *Runner) Execute(ctx context.Context, plan brain.Plan, allowed []v1alpha
 		if err != nil {
 			return nil, err
 		}
+
+		if _, mutating := mutationActionNames[req.Name]; mutating && !boolParam(req.Params, "dry_run") {
+			name, _ := req.Params["name"].(string)
+			namespace, _ := req.Params["namespace"].(string)
+			if !r.cooldown.Allow(req.Name, namespace, name, defaultMutationCooldown) {
+				results = append(results, Result{
+					ActionName: req.Name,
+					Err:        fmt.Errorf("action %q on %s/%s skipped: within cooldown window", req.Name, namespace, name),
+				})
+				continue
+			}
+		}
+
 		out, runErr := action.Run(ctx, req.Params)
 		results = append(results, Result{ActionName: req.Name, Output: out, Err: runErr})
 	}

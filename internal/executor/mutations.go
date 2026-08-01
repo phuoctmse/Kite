@@ -22,6 +22,16 @@ func registerMutations(r *Registry, c client.Client) {
 	r.Register(&deletePod{client: c})
 }
 
+// mutationActionNames are the write actions subject to per-resource cooldown
+// gating in Runner.Execute — everything registerMutations registers.
+var mutationActionNames = map[string]struct{}{
+	"scale_deployment": {},
+	"restart_pod":      {},
+	"cordon_node":      {},
+	"uncordon_node":    {},
+	"delete_pod":       {},
+}
+
 // ─── scale_deployment ────────────────────────────────────────────────────────
 
 // scaleDeployment adjusts the replica count of a Deployment.

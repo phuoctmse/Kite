@@ -157,11 +157,43 @@ func (a *Agent) handleEvent(ctx context.Context, e event.Event) {
 }
 
 // builtinToolDefs are always exposed to the brain regardless of AllowedActions.
+// Names and params must match what internal/executor/builtins.go registers.
 var builtinToolDefs = []brain.ToolDef{
-	{Name: "get_cluster_snapshot", Description: "Get compressed cluster health snapshot — call this first"},
-	{Name: "get_pod_logs", Description: "Get last N log lines from a pod. Params: name, namespace, tail int"},
-	{Name: "get_pod_events", Description: "Get recent K8s events for a specific pod. Params: name, namespace"},
-	{Name: "propose_action", Description: "Propose an action for the executor. Call this last after reasoning"},
+	{
+		Name:        "get_pods",
+		Description: "List pods and their status (name, phase, restarts, age) in a namespace.",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"namespace": map[string]any{"type": "string", "description": "Kubernetes namespace (default: \"default\")"},
+			},
+		},
+	},
+	{
+		Name:        "get_logs",
+		Description: "Get the last N log lines from a pod's container.",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name":      map[string]any{"type": "string", "description": "Pod name"},
+				"namespace": map[string]any{"type": "string", "description": "Kubernetes namespace (default: \"default\")"},
+				"container": map[string]any{"type": "string", "description": "Container name (default: pod's first container)"},
+				"tail":      map[string]any{"type": "number", "description": "Number of log lines to return (default: 200)"},
+			},
+			"required": []string{"name"},
+		},
+	},
+	{
+		Name:        "describe_node",
+		Description: "Show a node's conditions, capacity, allocatable resources, and node info.",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name": map[string]any{"type": "string", "description": "Node name"},
+			},
+			"required": []string{"name"},
+		},
+	},
 }
 
 // phase2ToolDefs describes write actions; only surfaced to the brain when they

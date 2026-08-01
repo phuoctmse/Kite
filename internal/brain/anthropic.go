@@ -63,7 +63,8 @@ func (p *AnthropicProvider) Decide(ctx context.Context, prompt Prompt) (Plan, er
 	// Build system prompt with cluster snapshot context
 	systemPrompt := fmt.Sprintf("%s\n\nYou are an AI ops agent monitoring a Kubernetes cluster. "+
 		"Analyze the cluster state, identify problems, and propose actions. "+
-		"Always call get_cluster_snapshot first to understand cluster health.", prompt.SystemContext)
+		"Use the available read-only tools (e.g. get_pods, get_logs, describe_node) to gather more "+
+		"detail before proposing any write action.", prompt.SystemContext)
 
 	// Convert available tools to Anthropic format
 	tools := make([]anthropicTool, 0, len(prompt.AvailableTools))
