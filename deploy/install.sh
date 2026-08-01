@@ -10,6 +10,7 @@ echo "Installing Kite into namespace: $NAMESPACE"
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f "$MANIFEST_DIR/kite-agent-crd.yaml"
 kubectl apply -f "$MANIFEST_DIR/rbac.yaml"
+kubectl apply -f "$MANIFEST_DIR/deployment.yaml"
 
 echo ""
 echo "Done. Next steps:"

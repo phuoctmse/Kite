@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kite-agent-controller-manager
+  namespace: kite-system
+  labels:
+    app.kubernetes.io/name: kite-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kite-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kite-agent
+    spec:
+      serviceAccountName: kite-agent
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532 # distroless nonroot UID — required since the image's USER is a name, not a numeric UID
+      containers:
+        - name: manager
+          image: ghcr.io/phuoctmse/kite:latest
+          args:
+            - --metrics-bind-address=:8080
+            - --health-probe-bind-address=:8081
+          ports:
+            - name: metrics
+              containerPort: 8080
+            - name: health
+              containerPort: 8081
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
